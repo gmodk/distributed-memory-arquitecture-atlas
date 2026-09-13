@@ -65,11 +65,25 @@
     <section class="lab-panel" id="lab-core"><div id="coreResults" class="results"><div class="empty">Run the current lens to populate its native mathematical laboratory.</div></div></section>
     <section class="lab-panel" id="lab-diagnostics"><div class="diagnostic-header"><div><h2>Constraints / diagnostics</h2><p id="diagnosticDescription">Detailed numerical and structural diagnostics for the current lens.</p></div><button id="refreshDiagnostics">Refresh diagnostics</button></div><div id="diagnosticResults" class="results"></div></section>
     <section class="lab-panel" id="lab-crypto">
-      <div class="crypto-hero"><div><div class="eyebrow">EDUCATIONAL SECURITY / ACCESS-STRUCTURE LAB</div><h2>Keyed invariants and partial-observation experiments</h2><p id="cryptoDescription">Apply a deterministic key-derived invertible monomial coordinate transform and inspect what the current mathematical lens preserves. This is a research/teaching lab, not a production cryptosystem.</p></div><div class="crypto-controls"><label>Master key<input id="cryptoKey" type="password" value="atlas-demo-key"></label><label>Visible region fraction<input id="visibleFraction" type="number" min="0" max="1" step="0.05" value="0.5"></label><button class="primary" id="runCrypto">Run cryptography lab</button></div></div><div id="cryptoResults" class="results"><div class="empty">Run the cryptography lab to inspect invariants and access structure.</div></div>
+      <div class="crypto-hero"><div><div class="eyebrow">CRYPTOGRAPHIC ACCESS-STRUCTURE LAB</div><h2>AEAD + randomized linear secret sharing</h2><p id="cryptoDescription">Encrypt the current semantic token with AES-256-GCM, distribute the random encryption key across memory regions with an LSSS / monotone span program, authenticate shares with Ed25519, and measure leakage, availability and compromise risk.</p></div></div>
+      <div class="crypto-controls crypto-controls-v2">
+        <label>Access policy<select id="cryptoPolicy"><option value="threshold">threshold LSSS</option><option value="atlas-derived">Atlas-derived minimal sets</option><option value="custom-dnf">custom DNF / MSP</option></select></label>
+        <label id="thresholdLabel">Threshold t<input id="cryptoThreshold" type="number" min="1" value="3"></label>
+        <label>Coalition regions<input id="coalitionRegions" type="text" placeholder="e.g. 1,2,5 (blank = sampled)"></label>
+        <label>Sampled coalition fraction<input id="coalitionFraction" type="number" min="0" max="1" step="0.05" value="0.5"></label>
+        <label>Region survival q<input id="cryptoSurvival" type="number" min="0" max="1" step="0.05" value="0.9"></label>
+        <label>Region compromise c<input id="cryptoCompromise" type="number" min="0" max="1" step="0.01" value="0.1"></label>
+        <label>Risk trials<input id="cryptoTrials" type="number" min="100" max="10000" value="2000"></label>
+        <label class="inline-check crypto-check"><input id="tamperShare" type="checkbox"> tamper one selected share</label>
+        <button class="primary" id="runCrypto">Encrypt + distribute + analyze</button>
+      </div>
+      <div id="customPolicyWrap" class="custom-policy-wrap" style="display:none"><label>Custom minimal authorized sets (JSON)<textarea id="customMinimalSets" rows="4" placeholder="[[1,2,3],[2,4,5]]"></textarea></label><p class="small-note">The JSON is interpreted as an OR of AND clauses. Each listed set is a minimal authorized coalition and is compiled into a randomized monotone-span LSSS.</p></div>
+      <div class="security-model-strip"><b>Security model:</b> confidentiality/integrity of the token comes from AES-256-GCM; access control comes from fresh-randomness LSSS shares; Ed25519 detects modified dealer-issued shares. The legacy invertible rank-preserving transform is retained only as a comparison and is not the cryptosystem.</div>
+      <div id="cryptoResults" class="results"><div class="empty">Run the cryptography lab to create an encrypted envelope and distribute its key across the current region architecture.</div></div>
     </section>
   </section>
 
-  <section id="docsView" class="view"><div class="workspace-head"><div><div class="eyebrow">DOCUMENTATION</div><h1>Atlas Guide</h1><p>The complete platform documentation is shipped as Markdown files.</p></div></div><div class="doc-cards"><a href="/docs/user-guide/ATLAS_USER_GUIDE.md" target="_blank">User Guide</a><a href="/docs/foundations/FOUNDATIONAL_MATHEMATICS.md" target="_blank">Mathematical Foundations</a><a href="/docs/ARCHITECTURE.md" target="_blank">Software Architecture</a><a href="/docs/MIGRATION_MAP.md" target="_blank">Five-project Migration Map</a></div></section>
+  <section id="docsView" class="view"><div class="workspace-head"><div><div class="eyebrow">DOCUMENTATION</div><h1>Atlas Guide</h1><p>The complete platform documentation is shipped as Markdown files.</p></div></div><div class="doc-cards"><a href="/docs/user-guide/ATLAS_USER_GUIDE.md" target="_blank">User Guide</a><a href="/docs/foundations/FOUNDATIONAL_MATHEMATICS.md" target="_blank">Mathematical Foundations</a><a href="/docs/ARCHITECTURE.md" target="_blank">Software Architecture</a><a href="/docs/SECURITY_MODEL.md" target="_blank">Security Model</a><a href="/docs/MIGRATION_MAP.md" target="_blank">Five-project Migration Map</a></div></section>
 </main></div>
 <div id="toast"></div>
 <script src="/static/tda_core.js"></script><script src="/static/app.js"></script><script src="/static/graph_lab.js"></script>

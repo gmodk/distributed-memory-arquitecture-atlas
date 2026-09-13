@@ -21,6 +21,7 @@ The central workflow is:
 From the project root:
 
 ```bash
+python -m pip install -r requirements.txt
 python app.py
 ```
 
@@ -412,9 +413,9 @@ The approach registry is designed to support such additions without reproducing 
 
 ---
 
-# Atlas 2.0 research laboratories
+# Atlas 2.1 research laboratories
 
-Atlas 2.0 restores the exploratory depth of the standalone applications and makes it available from every primary mathematical lens.
+Atlas 2.1 retains the exploratory depth of the standalone applications and makes it available from every primary mathematical lens.
 
 Each approach now contains five tabs.
 
@@ -524,35 +525,145 @@ This tab gives the detailed numerical payload behind the Core lab. Its meaning c
 
 ## Cryptography lab
 
-The cryptography lab is available from all five approaches.
+Atlas 2.1 replaces the former rank-invariance security demonstration with a hybrid encrypted-memory experiment:
 
-Choose a master key and a visible-region fraction. Atlas derives an invertible monomial coordinate transformation over `F_p`, verifies the exact round trip, and tests lens-specific invariants and access conditions.
+1. the current semantic token is encrypted with a fresh AES-256-GCM key;
+2. that key is converted to one element of `F_(2^521-1)`;
+3. a randomized LSSS / monotone span program distributes the key across regions;
+4. each issued share is signed with Ed25519;
+5. the selected coalition is tested for authorization, leakage and authenticated reconstruction;
+6. survival/compromise probabilities are evaluated against the same access policy.
 
-### Combinatorial
+The old invertible coordinate transform still appears in the results as **Why the old rank-invariance transform is not the cryptosystem**. It is informational comparison only.
 
-Checks rank invariance and whether the keyed visible region subset has full systematic rank.
+### Access policy
 
-### Spectral
+Choose one of three policy types.
 
-Checks lifted constraint-rank invariance and whether the selected physical spectral blocks determine the projective token; the anchor condition is reported separately.
+#### Threshold LSSS
 
-### Probabilistic
+Set threshold `t`. If there are `N` physical share-holding regions, any `t` regions reconstruct the key. Coalitions with fewer than `t` regions are unauthorized.
 
-Explains and verifies the structural reason an invertible coordinate change leaves every fixed erasure-pattern row rank unchanged.
+This policy is implemented in Shamir/Vandermonde linear-span form.
 
-### Sheaf
+#### Atlas-derived minimal sets
 
-Relabels coordinates, verifies cohomology-dimension invariance of the isomorphic cover, and reports whether the visible patches cover all token coordinates.
+Atlas derives several candidate minimal authorized coalitions from the current lens and compiles their OR-of-AND rule into a DNF monotone span program.
 
-### Information
+- **Combinatorial:** greedy full-rank systematic row families.
+- **Spectral:** constraint-rank `n-1` families plus the anchor.
+- **Probabilistic:** systematic rank-basis families, then probability is applied to the resulting access rule.
+- **Sheaf:** inclusion-minimal patch families covering every token coordinate.
+- **Information:** systematic rank-basis families, interpreted through key leakage and conditional entropy.
 
-Reports the rank of visible observations and the exact uniform-source quantities
+The derivation is a policy heuristic; the resulting LSSS enforces the derived access structure exactly.
 
-`I(T;Y_A)=r log_2(p)` and `H(T|Y_A)=(n-r)log_2(p)`.
+#### Custom DNF / MSP
 
-### Security warning
+Enter minimal authorized sets as JSON, for example:
 
-The cryptography lab is not an encryption product. The transformations are intentionally transparent mathematical experiments for basis hiding, invariance and access structure. Do not interpret successful rank preservation as a security proof.
+```json
+[[1,2,3],[2,4,5]]
+```
+
+This means:
+
+`(R1 AND R2 AND R3) OR (R2 AND R4 AND R5)`.
+
+A region can receive more than one share row if it appears in more than one clause.
+
+### Coalition regions
+
+Enter a comma-separated coalition such as:
+
+```text
+1,2,5
+```
+
+Leave the field blank to have Atlas sample a coalition according to **Sampled coalition fraction**.
+
+The result distinguishes:
+
+- `structurally_authorized` — the access structure accepts the coalition;
+- `authenticated_for_reconstruction` — the coalition is authorized and all selected shares verify;
+- `reconstructed_key_matches` — the reconstructed 256-bit key equals the encryption key;
+- `token_decryption_verified` — AES-GCM decryption reproduces the exact serialized token.
+
+### Perfect-secrecy display
+
+For the LSSS model, an unauthorized coalition receives fresh-randomness linear shares whose distribution is independent of the shared key. Atlas therefore displays:
+
+```text
+I(K ; X_U) = 0 bits
+H(K | X_U) = 256 bits
+```
+
+For an authorized coalition:
+
+```text
+I(K ; X_A) = 256 bits
+H(K | X_A) = 0 bits
+```
+
+These statements describe the implemented ideal LSSS model for the random 256-bit key; they are not empirical leakage estimates.
+
+### Share tampering
+
+Enable **tamper one selected share** to modify one selected share value after its Ed25519 signature has been issued.
+
+Expected behavior:
+
+- the access structure may still say the coalition is structurally authorized;
+- Ed25519 verification fails on the altered row;
+- authenticated reconstruction is blocked;
+- token decryption does not occur.
+
+The signature layer is not full VSS. It detects modification of dealer-issued shares, but it does not prove that a malicious dealer originally issued mutually consistent shares.
+
+### Survival and compromise
+
+Set:
+
+- **Region survival q** — per-region probability of being available;
+- **Region compromise c** — per-region probability of being read by the attacker;
+- **Risk trials** — Monte Carlo trials for non-threshold policies.
+
+Atlas reports:
+
+```text
+P_avail = P(surviving coalition is authorized)
+P_comp  = P(compromised coalition is authorized)
+```
+
+Threshold policies use exact binomial tails. DNF/MSP policies use Monte Carlo simulation.
+
+### Lens-specific meaning
+
+#### Combinatorial
+
+Regions are share holders and the contributor/rank geometry can seed minimal authorized coalitions.
+
+#### Spectral
+
+Spectral rank can seed an access policy, but confidentiality is supplied by AEAD + LSSS. Spectral basis hiding is no longer treated as encryption.
+
+#### Probabilistic
+
+The main cryptographic quantities are availability and catastrophic compromise probabilities induced by the access structure.
+
+#### Sheaf
+
+Patches can hold shares and coordinate-covering patch families can seed access policies. Sheaf cohomology is not treated as a cryptographic hardness assumption.
+
+#### Information
+
+The central security statement is information leakage: unauthorized coalitions have zero mutual information about the LSSS key under the model.
+
+### Cryptographic implementation boundary
+
+AES-256-GCM and Ed25519 come from the `cryptography` package. Atlas directly implements the LSSS/MSP finite-field layer so the share mathematics remains inspectable.
+
+The application is a research prototype, not a production KMS. It does not provide secure persistent share storage, authenticated network distribution, malicious-dealer VSS, proactive refresh, revocation, hardware key protection or independent security audit. Read `docs/SECURITY_MODEL.md` before interpreting results operationally.
 
 ## Large graph behavior
 

@@ -3,6 +3,7 @@ from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'src'))
 from distributed_memory_atlas.core import Experiment, generate_random_token
+from distributed_memory_atlas.core.secret_sharing import threshold_span_program, dnf_span_program, share_secret, reconstruct_secret
 from distributed_memory_atlas.approaches import combinatorial,spectral,probabilistic,sheaf,information,comparison,exploration,crypto_lab
 
 class AtlasTests(unittest.TestCase):
@@ -82,21 +83,62 @@ class AtlasTests(unittest.TestCase):
             self.assertEqual(d["id"],1)
             self.assertIn("meaning",d)
 
-    def test_crypto_lab_rank_invariance_all_lenses(self):
+    def test_threshold_lsss_reconstruction_and_privacy_structure(self):
+        p=threshold_span_program([1,2,3,4],3)
+        shares=share_secret(123456789,p)
+        self.assertFalse(p.authorized([1,2]))
+        self.assertIsNone(reconstruct_secret(p,shares,[1,2]))
+        self.assertTrue(p.authorized([1,2,3]))
+        self.assertEqual(reconstruct_secret(p,shares,[1,2,3]),123456789)
+
+    def test_dnf_monotone_span_policy(self):
+        p=dnf_span_program([[1,3],[2,4,5]])
+        shares=share_secret(77,p)
+        self.assertTrue(p.authorized([1,3]))
+        self.assertTrue(p.authorized([2,4,5]))
+        self.assertFalse(p.authorized([1,2,4]))
+        self.assertEqual(reconstruct_secret(p,shares,[1,3]),77)
+
+    def test_crypto_lab_aead_lsss_roundtrip_all_lenses(self):
         for lens in ["combinatorial","spectral","probabilistic","sheaf","information"]:
-            c=crypto_lab.analyze(self.e,lens,key="test-key",visible_fraction=.5)
-            self.assertTrue(c["transform"]["rank_invariant"])
-            self.assertTrue(c["transform"]["roundtrip_recovers_original"])
-            self.assertIn("security_warning",c)
+            c=crypto_lab.analyze(self.e,lens,policy_type="threshold",threshold=2,coalition_fraction=1.0,trials=150)
+            self.assertTrue(c["coalition"]["structurally_authorized"])
+            self.assertTrue(c["coalition"]["reconstructed_key_matches"])
+            self.assertTrue(c["coalition"]["token_decryption_verified"])
+            self.assertEqual(c["coalition"]["conditional_key_entropy_bits"],0)
+            self.assertEqual(c["primitive_stack"]["payload_confidentiality_integrity"],"AES-256-GCM")
 
-    def test_sheaf_crypto_preserves_cohomology_under_relabeling(self):
-        c=crypto_lab.analyze(self.e,"sheaf",key="topology-key",visible_fraction=.5)
-        self.assertTrue(c["transform"]["cohomology_invariant"])
+    def test_unauthorized_lsss_coalition_has_zero_declared_leakage(self):
+        c=crypto_lab.analyze(self.e,"information",policy_type="threshold",threshold=3,coalition=[1],trials=100)
+        self.assertFalse(c["coalition"]["structurally_authorized"])
+        self.assertEqual(c["coalition"]["mutual_information_about_key_bits"],0)
+        self.assertEqual(c["coalition"]["conditional_key_entropy_bits"],256)
+        self.assertFalse(c["coalition"]["token_decryption_verified"])
 
-    def test_information_crypto_matches_rank_information(self):
-        import math
-        c=crypto_lab.analyze(self.e,"information",key="info-key",visible_fraction=.6)
-        a=c["access_structure"]
-        self.assertAlmostEqual(a["mutual_information_bits_uniform_source"],a["observation_rank"]*math.log2(self.e.p))
+    def test_share_tampering_is_detected_and_blocks_reconstruction(self):
+        c=crypto_lab.analyze(self.e,"combinatorial",policy_type="threshold",threshold=2,coalition_fraction=1.0,tamper=True,trials=100)
+        self.assertTrue(c["coalition"]["structurally_authorized"])
+        self.assertTrue(c["authenticated_shares"]["tamper_detected"])
+        self.assertFalse(c["coalition"]["authenticated_for_reconstruction"])
+        self.assertFalse(c["coalition"]["token_decryption_verified"])
+
+    def test_atlas_derived_msp_all_lenses(self):
+        for lens in ["combinatorial","spectral","probabilistic","sheaf","information"]:
+            c=crypto_lab.analyze(self.e,lens,policy_type="atlas-derived",coalition_fraction=1.0,trials=100)
+            self.assertEqual(c["policy"]["type"],"dnf")
+            self.assertTrue(c["policy"]["minimal_authorized_sets"])
+            self.assertTrue(c["coalition"]["structurally_authorized"])
+            self.assertTrue(c["coalition"]["token_decryption_verified"])
+
+    def test_threshold_risk_endpoints(self):
+        c=crypto_lab.analyze(self.e,"combinatorial",policy_type="threshold",threshold=2,coalition_fraction=1.0,survival_q=1.0,compromise_q=0.0,trials=100)
+        self.assertEqual(c["availability_and_compromise"]["availability_probability"],1.0)
+        self.assertEqual(c["availability_and_compromise"]["catastrophic_compromise_probability"],0.0)
+
+    def test_legacy_rank_transform_is_only_comparison(self):
+        c=crypto_lab.analyze(self.e,"information",policy_type="threshold",threshold=2,coalition_fraction=1.0,trials=100)
+        legacy=c["legacy_obfuscation_comparison"]
+        self.assertTrue(legacy["rank_invariant"])
+        self.assertEqual(legacy["security_status"],"not a confidentiality primitive")
 
 if __name__=='__main__':unittest.main()

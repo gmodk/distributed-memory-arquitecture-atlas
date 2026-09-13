@@ -16,7 +16,7 @@ STATE={"experiment":Experiment(name="Atlas starter experiment")}
 STATE["experiment"].validate()
 
 class Handler(BaseHTTPRequestHandler):
-    server_version='DistributedMemoryAtlas/2.0'
+    server_version='DistributedMemoryAtlas/2.1'
     def log_message(self,fmt,*args):
         if os.environ.get('ATLAS_QUIET')!='1': super().log_message(fmt,*args)
     def _json(self,obj,status=200):
@@ -32,7 +32,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_response(200);self.send_header('Content-Type',ctype);self.send_header('Content-Length',str(len(data)));self.end_headers();self.wfile.write(data)
     def do_GET(self):
         u=urlparse(self.path);path=u.path
-        if path=='/api/catalog':return self._json({'approaches':catalog(),'token_types':available_token_types(),'version':'2.0.0'})
+        if path=='/api/catalog':return self._json({'approaches':catalog(),'token_types':available_token_types(),'version':'2.1.0'})
         if path=='/api/experiment':return self._json(STATE['experiment'].payload())
         if path.startswith('/api/analyze/'):
             name=path.split('/')[-1]
@@ -94,7 +94,18 @@ class Handler(BaseHTTPRequestHandler):
                 parts=[x for x in path.split('/') if x]
                 if len(parts)>=4:
                     approach=parts[2]
-                    return self._json(crypto_lab.analyze(STATE['experiment'],approach,key=str(body.get('key','')),visible_fraction=float(body.get('visible_fraction',0.5)),q=float(body.get('q',0.9))))
+                    return self._json(crypto_lab.analyze(
+                        STATE['experiment'], approach,
+                        policy_type=str(body.get('policy_type','threshold')),
+                        threshold=body.get('threshold'),
+                        coalition=body.get('coalition'),
+                        coalition_fraction=float(body.get('coalition_fraction',0.5)),
+                        survival_q=float(body.get('survival_q',body.get('q',0.9))),
+                        compromise_q=float(body.get('compromise_q',0.1)),
+                        trials=int(body.get('trials',2000)),
+                        tamper=bool(body.get('tamper',False)),
+                        custom_minimal_sets=body.get('custom_minimal_sets'),
+                    ))
             if path.startswith('/api/analyze/'):
                 name=path.split('/')[-1];module=get_approach(name)
                 kwargs={k:v for k,v in body.items() if k not in {'experiment'}}

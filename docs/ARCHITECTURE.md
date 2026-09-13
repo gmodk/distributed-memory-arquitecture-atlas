@@ -55,6 +55,10 @@ Horner evaluation and CRT/evaluation-coordinate generation.
 ### `aggregation.py`
 Semantic aggregation for the combinatorial lens, including permutation composition.
 
+### `secret_sharing.py`
+
+Implements the inspectable finite-field LSSS/MSP layer: threshold Vandermonde span programs, DNF monotone-span compilation, fresh randomized share generation, coalition authorization, reconstruction coefficients and exact secret reconstruction over `F_(2^521-1)`.
+
 ## 4. Approach contract
 
 Each module exports:
@@ -146,9 +150,9 @@ A new mathematical lens should satisfy three conditions:
 
 ---
 
-# Atlas 2.0 exploratory laboratory layer
+# Atlas 2.1 exploratory and cryptographic laboratory layer
 
-Atlas 2.0 adds two shared modules above the common experiment core and below the browser renderer:
+The unified Atlas adds two shared cross-lens services above the experiment core:
 
 ```text
 Experiment
@@ -157,30 +161,94 @@ Experiment
    |
    +--> exploration.py  --> geometry / region / graph payloads
    |
-   +--> crypto_lab.py   --> keyed invariance / access experiments
+   +--> crypto_lab.py   --> AEAD envelope + access-policy orchestration
+                            |
+                            +--> core/secret_sharing.py
+                            +--> cryptography AESGCM / Ed25519
 ```
 
-The exploratory layer does **not** replace approach mathematics. It translates each lens into a common set of inspectable objects:
-
-- coordinate nodes;
-- region/hyperedge nodes;
-- incidences;
-- physical/virtual state;
-- an approach-specific filtration score;
-- a local region-detail payload.
-
-The browser owns drawing, force layouts, 2D/3D projection and ordinary simplicial TDA. Python remains the source of truth for region semantics, ranks, cohomology, information quantities and keyed transformations.
+The exploratory layer does not replace approach mathematics. It translates each lens into coordinate nodes, region nodes, incidences, physical/virtual state, filtration scores and local detail payloads.
 
 ## Shared graph model
 
-Every lens exports a bipartite incidence graph with coordinate nodes `C_i` and region nodes `R_j`. This common representation is intentionally weak: it records incidence without pretending that contributor regions, spectral constraint blocks, sheaf patches and information observations are mathematically identical.
-
-The graph lab can therefore reuse one renderer while each lens supplies its own semantics and filtration score.
+Every lens exports a bipartite incidence graph with coordinate nodes `C_i` and region nodes `R_j`. The common representation records incidence without asserting that contributor regions, spectral constraint blocks, sheaf patches and information observations are mathematically identical.
 
 ## Ordinary TDA versus sheaf cohomology
 
-The graph/TDA workspace constructs an ordinary simplicial lift from region supports and computes homology over `F_2` client-side. This is distinct from the sheaf approach, whose cohomology is computed from stalks and restriction maps over the selected finite field. Atlas displays both rather than conflating them.
+The Graph/TDA workspace constructs an ordinary simplicial lift from region supports and computes homology over `F_2` client-side. Sheaf cohomology is computed separately from stalks and restriction maps over the selected finite field.
 
-## Cryptography laboratory boundary
+## Cryptography architecture
 
-`crypto_lab.py` implements invertible monomial coordinate changes and keyed selection of visible region families. These experiments are designed to study invariants, leakage proxies and access conditions. The module is not part of the trusted core and makes no production-security claim.
+### `core/secret_sharing.py`
+
+This module is mathematical infrastructure, not an approach-specific lens. It provides:
+
+- `SpanProgram`;
+- threshold Vandermonde/Shamir matrices;
+- DNF monotone-span compilation;
+- fresh randomized sharing;
+- row-labeled coalition authorization;
+- reconstruction coefficients;
+- exact reconstruction.
+
+The prime field is `F_(2^521-1)`, chosen so a 256-bit AEAD key is one field element.
+
+### `approaches/crypto_lab.py`
+
+This module orchestrates the application-level cryptographic experiment:
+
+1. serialize the current semantic token;
+2. generate a fresh 256-bit AES key;
+3. encrypt the token with AES-256-GCM and experiment metadata as AAD;
+4. build a threshold, Atlas-derived or custom LSSS policy;
+5. share the AES key using fresh masks;
+6. sign every share with a fresh Ed25519 dealer key;
+7. select/test a coalition;
+8. verify signatures before reconstruction;
+9. reconstruct and decrypt only for authenticated authorized coalitions;
+10. compute availability/compromise statistics;
+11. report lens-specific interpretation;
+12. include the former monomial rank-invariance transform only as a non-security comparison.
+
+AES-GCM and Ed25519 are supplied by `cryptography`; Atlas does not reimplement those primitives.
+
+## Cryptography API boundary
+
+The existing endpoint remains:
+
+```text
+POST /api/explore/<approach>/crypto
+```
+
+The request may contain:
+
+```json
+{
+  "policy_type": "threshold",
+  "threshold": 3,
+  "coalition": "1,2,5",
+  "coalition_fraction": 0.5,
+  "survival_q": 0.9,
+  "compromise_q": 0.1,
+  "trials": 2000,
+  "tamper": false,
+  "custom_minimal_sets": null
+}
+```
+
+`policy_type` can be `threshold`, `atlas-derived`, or `custom-dnf`.
+
+The response deliberately does **not** expose the raw AEAD key or complete field share values. It returns ciphertext metadata/hashes, policy metadata, coalition authorization, leakage classification, truncated share-value previews, signatures/verification results and risk statistics.
+
+## Security boundary
+
+The LSSS privacy property is mathematical and exact under its stated model. The surrounding application remains a research prototype. In particular:
+
+- Ed25519 share signatures are not full VSS;
+- shares are not persistently stored/distributed by a hardened protocol;
+- there is no malicious-dealer consistency proof;
+- there is no key rotation/revocation/refresh protocol;
+- there is no side-channel or secure-erasure guarantee;
+- HTTP transport is not itself secured by Atlas.
+
+The authoritative scope statement is `docs/SECURITY_MODEL.md`.

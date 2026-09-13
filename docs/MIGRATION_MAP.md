@@ -106,3 +106,27 @@ A single JSON file now describes an experiment rather than an input format for o
 Old repositories included independent HTTP shells, CSS, token generators, finite-field helpers, README boilerplate and duplicated parameter forms. Those are intentionally not migrated as separate copies.
 
 The archived projects remain useful as reference implementations and historical checkpoints, but the Atlas is the active integrated architecture.
+
+---
+
+## Atlas 2.1 cryptographic layer
+
+The five historical projects did not contain one shared cryptographic implementation. Atlas 2.1 adds a new cross-lens layer rather than migrating the former spectral basis-hiding experiment as the security primitive.
+
+Shared once:
+
+- AES-256-GCM encryption of the semantic token;
+- LSSS/MSP distribution of the random encryption key;
+- threshold and DNF access policies;
+- Ed25519 authentication of issued shares;
+- coalition authorization/reconstruction;
+- leakage classification;
+- survival/compromise simulation.
+
+Lens-specific policy interpretation remains modular:
+
+- combinatorial, probabilistic and information lenses can derive minimal rank-basis coalitions;
+- spectral derives rank-`n-1` + anchor coalitions;
+- sheaf derives coordinate-covering patch coalitions.
+
+The old spectral keyed-conjugation/basis-hiding work is retained only as an educational algebraic comparison. It is no longer the Atlas confidentiality mechanism.

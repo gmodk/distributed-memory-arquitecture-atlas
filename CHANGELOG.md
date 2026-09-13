@@ -1,52 +1,80 @@
 # Changelog — Distributed Memory Architecture Atlas
 
+## [2.1.0] — 2026-09-13
+
+### Replaced the former rank-invariance security demonstration
+
+The Cryptography Lab is now centered on **authenticated encryption plus randomized linear secret sharing**, rather than treating an invertible rank-preserving coordinate transform as a confidentiality mechanism.
+
+### Added
+
+- `core/secret_sharing.py` with exact finite-field LSSS/MSP machinery over the prime field `F_(2^521-1)`.
+- Threshold span programs in Shamir/Vandermonde form.
+- DNF monotone-span compiler from minimal authorized region sets.
+- Exact coalition authorization by testing whether the target vector lies in the coalition row span.
+- LSSS share generation with fresh OS-backed randomness.
+- Exact linear reconstruction coefficients and secret reconstruction.
+- AES-256-GCM encryption of the current semantic token using a fresh random 256-bit key.
+- Secret sharing of the AEAD key rather than deterministic transformation of the plaintext token.
+- Ed25519 signatures on every issued share.
+- Tamper simulation and signature-failure detection before reconstruction.
+- Three access-policy modes:
+  - threshold LSSS;
+  - Atlas-derived monotone span program;
+  - custom DNF/MSP supplied as minimal authorized sets.
+- Atlas-derived access policies for every lens:
+  - full-rank systematic bases for combinatorial/probabilistic/information lenses;
+  - spectral rank-`n-1` region families plus anchor;
+  - coordinate-covering patch families for the sheaf lens.
+- Coalition leakage reporting for the shared 256-bit key:
+  - unauthorized: `I(K;X_U)=0` under the LSSS model;
+  - authorized: `H(K|X_A)=0` after valid reconstruction.
+- Availability-versus-compromise analysis:
+  - exact binomial probabilities for threshold policies;
+  - Monte Carlo evaluation for general monotone access structures.
+- A dedicated `docs/SECURITY_MODEL.md`.
+- New theorem/regression tests for LSSS reconstruction, DNF policies, AEAD round trips, perfect-secrecy classification, tamper detection, Atlas-derived policies and risk endpoints.
+
+### Changed
+
+- Atlas version advanced to 2.1.
+- Runtime now depends on `cryptography>=46.0.0` for AES-GCM and Ed25519.
+- The Cryptography Lab UI now exposes policy type, threshold, coalition selection, survival probability, compromise probability, risk trials, custom minimal authorized sets and share-tampering simulation.
+- The old key/master-key input and visible-fraction rank-invariance workflow were removed.
+- The old invertible monomial coordinate transform remains only in the result payload as an **algebraic-obfuscation comparison** explaining why rank invariance is not secrecy.
+- Documentation now distinguishes:
+  - cryptographic confidentiality/integrity;
+  - access-control structure;
+  - share authentication;
+  - stochastic availability/compromise;
+  - algebraic invariance experiments.
+
+### Security scope
+
+Atlas 2.1 makes a stronger and more precise distinction between mathematical security properties and production security. The LSSS privacy statement is exact under the implemented linear model with fresh uniform masks, while AES-GCM and Ed25519 are provided by the external `cryptography` implementation. The Atlas protocol/application has not been independently audited and is not a production KMS, VSS system or MPC framework.
+
+---
+
 ## [2.0.0] — 2026-09-13
 
 ### Restored and generalized exploratory laboratories
 
-Version 2.0 rebuilds the unified Atlas after the first consolidation preserved the five mathematical engines but reduced several exploratory capabilities that had existed in the standalone Spectral Hypergraph Memory V5 application.
+Version 2.0 rebuilt the unified Atlas after the first consolidation preserved the five mathematical engines but reduced several exploratory capabilities from the standalone Spectral Hypergraph Memory V5 application.
 
-Every primary mathematical lens now exposes the same five research workspaces:
-
-1. **Geometry** — circular coordinate geometry, selectable region universe, local region inspector and compact incidence view.
-2. **Graph / TDA lab** — 2D/3D incidence graph, continuous deep zoom, pan/orbit, draggable nodes, force simulation, six layouts, physics controls, client-side simplicial filtrations, Betti numbers and persistent Betti curves.
-3. **Core lab** — native mathematics of the selected lens.
-4. **Constraints / diagnostics** — detailed rank, coding, reliability, cohomology or entropy/information diagnostics.
-5. **Cryptography lab** — key-derived invertible coordinate transformations and access-structure experiments with explicit security caveats.
+Every primary mathematical lens received five research workspaces: Geometry, Graph/TDA, Core, Constraints/Diagnostics and Cryptography.
 
 ### Added
 
 - Shared `approaches/exploration.py` for lens-aware geometry, region inspection and graph payloads.
-- Shared `approaches/crypto_lab.py` for educational keyed invariance/access experiments.
-- Geometry semantics for all five lenses:
-  - combinatorial contributor regions;
-  - spectral CRT/eigenspace regions;
-  - probabilistic survival blocks;
-  - sheaf patches/local sections;
-  - information observation rows.
-- Approach-specific graph filtration scores.
-- Ordinary simplicial TDA overlay available from all five approaches.
+- Shared graph/TDA renderer for all five lenses.
+- Circular geometry, physical/virtual spectral regions, selectable region inspector and compact incidence view.
+- 2D/3D graph rendering, deep zoom, six layouts, force controls, simplicial filtrations, Betti numbers and persistent Betti curves.
 - Explicit distinction between ordinary simplicial homology and sheaf cohomology.
-- Keyed monomial coordinate transforms over `F_p` with exact round-trip validation.
-- Cross-lens rank-invariance experiments under invertible coordinate changes.
-- Access-subset experiments:
-  - rank/recovery and information leakage for combinatorial/information lenses;
-  - erasure-pattern invariance for probability;
-  - projective rank + anchor access for spectral memory;
-  - patch coverage and cohomology invariance for sheaves.
-- Graph rendering cap/warning for very large virtual region universes.
-- Additional theorem/regression tests for geometry, graph payloads and cryptography-lab invariants.
+- Initial educational cryptography workspace based on invertible monomial transformations and access diagnostics.
 
-### Changed
+### Limitation corrected by 2.1
 
-- Atlas server/version advanced to 2.0.
-- The former single results dashboard is now a multi-workspace research UI.
-- Spectral Hypergraph functionality is no longer a reduced summary: CRT geometry, physical/virtual regions, graph/TDA, constraint-rank diagnostics and security experiments are again directly explorable.
-- Graph/TDA infrastructure is implemented once and reused by all lenses.
-
-### Security note
-
-The cryptography workspace is an educational research laboratory. Key-derived coordinate changes, relabeling, similarity/basis-hiding phenomena and access-structure tests are **not** claimed to constitute a secure encryption or secret-sharing construction without a formal threat model and reduction.
+The 2.0 cryptography workspace demonstrated structural invariance but did not supply confidentiality. Version 2.1 replaces it with AEAD + randomized LSSS/MSP key distribution and demotes the old transform to a comparison experiment.
 
 ---
 
@@ -60,7 +88,3 @@ The cryptography workspace is an educational research laboratory. Key-derived co
 - Combinatorial, spectral, probabilistic, sheaf and information-theoretic analysis modules.
 - Cross-approach Comparison Lab.
 - Migration compatibility with legacy permutation-token JSON examples.
-
-### Limitation addressed by 2.0
-
-The initial consolidation intentionally emphasized shared engines and cross-approach state, but it compressed the richer geometry, graph, TDA and cryptography workspaces of the earlier standalone applications into summary panels. Version 2.0 corrects that regression.
